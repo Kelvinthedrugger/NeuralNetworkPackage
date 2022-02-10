@@ -119,7 +119,7 @@ class Sequential:
             f.close()
 
 class Loss:
-    def mse(self, y, yhat, supervised=True, num_class=10):
+    def mse(self, y, yhat, supervised=False, num_class=10):
         """read num_class when supervised"""
         if supervised:
             label = np.zeros((len(y), num_class), dtype=np.float32)
