@@ -9,3 +9,11 @@ According to @geohot, a package that has been built for 4 times
  , we can still do it in this way and see if the rules applied.
 
 
+#### usage
+    
+    # on cloud
+    !git clone https://github.com/Kelvinthedrugger/NeuralNetworkPackage.git 
+    
+    # test if it has been sucessfully imported
+    from NeuralNetworkPackage import lib as nn
+
