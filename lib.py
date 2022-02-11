@@ -319,3 +319,17 @@ class Conv:
                 for m in range(0, rm, st):
                     tmpout += tmpgrad[k:ks+k, m:ks+k].sum()
             self.grad[r] += tmpout
+
+
+class lstm:
+    pass
+
+
+def lr_finder():
+    pass
+
+# will be a memeber function of layer?
+
+
+def flatten():
+    pass
