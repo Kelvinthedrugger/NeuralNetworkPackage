@@ -1,6 +1,8 @@
 import numpy as np
 
 # from nn/module.py
+
+
 def layer_init(row, col):
     return np.random.uniform(-1., 1., size=(row, col))/np.sqrt(row*col)
 
@@ -118,6 +120,7 @@ class Sequential:
                         f.write("\n\n")
             f.close()
 
+
 class Loss:
     def mse(self, y, yhat, supervised=False, num_class=10):
         """read num_class when supervised"""
@@ -146,7 +149,7 @@ class Optimizer:
         self.learning_rate = learning_rate
 
     # call() is from topo.py
-    def call(self,layer,opt):
+    def call(self, layer, opt):
         if layer.child is not None:
             opt(layer.child)
 
@@ -155,7 +158,6 @@ class Optimizer:
         # call() usage
         # update the params in model recursively
         self.call(layer, self.SGD)
-
 
     def Adam(self, layer, b1=0.9, b2=0.999, eps=1e-8):
         m, v, t = 0, 0, 0
@@ -185,6 +187,7 @@ class Activations:
         if self.child is not None:
             self.child.backwards(bpass)
 
+
 class ReLU(Activations):
     def __call__(self, layer):
         self.child = layer
@@ -196,6 +199,34 @@ class ReLU(Activations):
         out = np.maximum(x, 0)
         self.grad = (out > 0).astype(np.float32)
         return out
+
+# this might be the correct way to inherit ?
+# and add __call__() to Activation
+
+
+class relu(Activations):
+    def __init__(self):
+        super().__init__()
+
+    def forwards(self, x):
+        if self.child is not None:
+            x = self.child.forwards(x)
+        out = np.maximum(x, 0)
+        self.grad = (out > 0).astype(np.float32)
+        return out
+
+
+class sigmoid(Activations):
+    def __init__(self):
+        super().__init__()
+
+    def forwards(self, x):
+        if self.child is not None:
+            x = self.child.forwards(x)
+        S = np.array(list(map(lambda x: 1/(1+np.exp(-x)), xx)))
+        self.grad = np.multiply(S, (1-S))
+        return S
+
 
 class Linear:
     def __init__(self, h=1, w=1, weight=None):
@@ -228,63 +259,63 @@ class Linear:
         if self.child is not None:
             self.child.backwards(bpass, optim)
 
+
 class Conv:
     def __init__(self, filters, kernel_size, stride=1, padding=False):
-      self.filters = filters
-      self.ks = kernel_size
+        self.filters = filters
+        self.ks = kernel_size
 
-      # fast in built-in, consider merge in layer_init()
-      weight = np.random.uniform(-1., 1.,size=(filters,kernel_size,kernel_size))/np.sqrt(kernel_size**2)
-      self.weight = weight.astype(np.float32)
+        # fast in built-in, consider merge in layer_init()
+        weight = np.random.uniform(-1., 1., size=(filters,
+                                   kernel_size, kernel_size))/np.sqrt(kernel_size**2)
+        self.weight = weight.astype(np.float32)
 
-      self.st = stride
-      self.padding = padding  # bool
+        self.st = stride
+        self.padding = padding  # bool
 
-      # similar to Tensor, can be replaced by inheriting from class Layer
-      self.forward = None
-      self.grad = np.zeros(weight.shape,dtype=np.float32)
-      self.trainable = True
+        # similar to Tensor, can be replaced by inheriting from class Layer
+        self.forward = None
+        self.grad = np.zeros(weight.shape, dtype=np.float32)
+        self.trainable = True
 
-      self.child = None
+        self.child = None
 
     def __repr__(self):
-      return f"filters: {self.filters}, ks: {self.ks}"
+        return f"filters: {self.filters}, ks: {self.ks}"
 
-    def __call__(self,layer):
-      self.child = layer
-      return layer
+    def __call__(self, layer):
+        self.child = layer
+        return layer
 
-    def forwards(self, x): 
-      ks = self.ks
-      st = self.st
-      # output[0]: batchsize -> No. of filter
-      # not the real conv, which doesn't require padding
-      # remove padding when forward, 
-      # and add padding when backward
-      out = np.zeros((self.filters,x.shape[1],x.shape[2]))
-      for r in range(self.filters):
-        for k in range(0, (x.shape[1]-ks) + 1, st):
-          for m in range(0, (x.shape[2]-ks) + 1, st):
-            tmp = x[:, k:k+ks, m:m+ks]
-            ret = np.multiply(self.weight[r], tmp)
-            out[r, k, m] = ret.sum()
+    def forwards(self, x):
+        ks = self.ks
+        st = self.st
+        # output[0]: batchsize -> No. of filter
+        # not the real conv, which doesn't require padding
+        # remove padding when forward,
+        # and add padding when backward
+        out = np.zeros((self.filters, x.shape[1], x.shape[2]))
+        for r in range(self.filters):
+            for k in range(0, (x.shape[1]-ks) + 1, st):
+                for m in range(0, (x.shape[2]-ks) + 1, st):
+                    tmp = x[:, k:k+ks, m:m+ks]
+                    ret = np.multiply(self.weight[r], tmp)
+                    out[r, k, m] = ret.sum()
 
-      self.forward = out 
-      return out 
+        self.forward = out
+        return out
 
-    def backwards(self,bpass):
-      # d_weight = forward.T @ bpass
-      ks = self.ks
-      st = self.st
-      rk = self.forward.shape[1]
-      rm = self.forward.shape[2]
+    def backwards(self, bpass):
+        # d_weight = forward.T @ bpass
+        ks = self.ks
+        st = self.st
+        rk = self.forward.shape[1]
+        rm = self.forward.shape[2]
 
-      for r in range(self.filters):
-        tmpgrad = self.forward[r].T @ bpass[r] 
-        tmpout = np.zeros(self.weight[0].shape)
-        for k in range(0, rk, st):
-          for m in range(0, rm, st):
-            tmpout += tmpgrad[k:ks+k, m:ks+k].sum()
-        self.grad[r] += tmpout
-
-
+        for r in range(self.filters):
+            tmpgrad = self.forward[r].T @ bpass[r]
+            tmpout = np.zeros(self.weight[0].shape)
+            for k in range(0, rk, st):
+                for m in range(0, rm, st):
+                    tmpout += tmpgrad[k:ks+k, m:ks+k].sum()
+            self.grad[r] += tmpout
